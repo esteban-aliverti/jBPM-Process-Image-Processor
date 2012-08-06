@@ -2,30 +2,34 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.ilesteban.processcoloring;
+package com.ilesteban.processimage;
 
-import com.ilesteban.processcoloring.transformation.TransformationJob;
+import com.ilesteban.processimage.transformation.TransformationJob;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStreamWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 import org.apache.batik.dom.svg.SAXSVGDocumentFactory;
 import org.apache.batik.dom.svg.SVGOMTSpanElement;
-import org.apache.batik.svggen.SVGGraphics2D;
 import org.apache.batik.transcoder.TranscoderInput;
 import org.apache.batik.transcoder.TranscoderOutput;
 import org.apache.batik.transcoder.image.PNGTranscoder;
 import org.apache.batik.util.XMLResourceDescriptor;
+import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-import org.w3c.dom.svg.SVGDocument;
 
 /**
  *
@@ -43,19 +47,20 @@ public class ProcessImageProcessor {
     public ProcessImageProcessor(InputStream processDefinition) throws IOException {
         this(processDefinition, null);
     }
-    
+
     public ProcessImageProcessor(InputStream processDefinition, ProcessImageProcessorConfiguration configuration) throws IOException {
-        if (configuration != null){
+        if (configuration != null) {
             this.configuration = configuration;
         }
-        
+
         Map<String, TaskDefinition> taskDefinitions = new HashMap<String, TaskDefinition>();
 
         String parser = XMLResourceDescriptor.getXMLParserClassName();
         SAXSVGDocumentFactory f = new SAXSVGDocumentFactory(parser);
-        
-        SVGDocument svgDocument = f.createSVGDocument("http://test", processDefinition);
-        
+
+        //SVGDocument svgDocument = f.createSVGDocument("http://test", processDefinition);
+        Document svgDocument = f.createDocument("http://test", processDefinition);
+
         NodeList texts = svgDocument.getElementsByTagName("text");
 
         for (int i = 0; i < texts.getLength(); i++) {
@@ -90,20 +95,20 @@ public class ProcessImageProcessor {
                         for (int j = 0; j < textNode.getChildNodes().getLength(); j++) {
                             if (textNode.getChildNodes().item(j) instanceof SVGOMTSpanElement) {
                                 SVGOMTSpanElement spanElement = (SVGOMTSpanElement) textNode.getChildNodes().item(j);
-                                System.out.println("tspan#"+j+" of '"+task.getTaskName()+"'");
-                                if (processedTSpanElements < totalTSpanElements-1 && totalTSpanElements > 1){
+                                //System.out.println("tspan#" + j + " of '" + task.getTaskName() + "'");
+                                if (processedTSpanElements < totalTSpanElements - 1 && totalTSpanElements > 1) {
                                     Float x = Float.parseFloat(spanElement.getAttribute("x"));
                                     Float xPad = this.configuration.getTaskSpecificTextPad(task.getTaskName());
-                                    
-                                    System.out.printf("(%s,%s) Old x for tspan %s of task '%s'= %s. New x= %s \n",processedTSpanElements, totalTSpanElements, j,task.getTaskName(),x,String.valueOf((x-xPad)));
-                                    spanElement.setAttribute("x", String.valueOf((x-xPad)));
+
+                                    //System.out.printf("(%s,%s) Old x for tspan %s of task '%s'= %s. New x= %s \n", processedTSpanElements, totalTSpanElements, j, task.getTaskName(), x, String.valueOf((x - xPad)));
+                                    spanElement.setAttribute("x", String.valueOf((x - xPad)));
                                 }
                                 processedTSpanElements++;
-                                System.out.println("\n\n");
+                                //System.out.println("\n\n");
                             }
-                            
+
                         }
-                        
+
                         //TODO: problems with duplicated names
                         taskDefinitions.put(task.getTaskName(), task);
 
@@ -122,7 +127,7 @@ public class ProcessImageProcessor {
     public ProcessImageProcessor(String processDefinition) throws IOException {
         this(new ByteArrayInputStream(processDefinition.getBytes()));
     }
-    
+
     public ProcessImageProcessor(String processDefinition, ProcessImageProcessorConfiguration configuration) throws IOException {
         this(new ByteArrayInputStream(processDefinition.getBytes()), configuration);
     }
@@ -157,45 +162,30 @@ public class ProcessImageProcessor {
         }
     }
 
-    public InputStream toSVG() {
-        if (true){
-           // throw new UnsupportedOperationException("Not yet implemented!");
-        }
+    public String toXML() {
         try {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-             
-             SVGGraphics2D svggd = new SVGGraphics2D(this.context.getSvgDocument());
-             svggd.stream(new OutputStreamWriter(baos),true);
-             baos.close();
-             return new ByteArrayInputStream(baos.toByteArray());
-             
-
-            // Use a Transformer for output
-//            TransformerFactory tFactory =
-//                    TransformerFactory.newInstance();
-//            Transformer transformer =
-//                    tFactory.newTransformer();
-//
-//            DOMSource source = new DOMSource(this.context.getSvgDocument());
-//            StreamResult result = new StreamResult(baos);
-//            transformer.transform(source, result);
-
-//            return new BufferedInputStream(new ByteArrayInputStream(baos.toByteArray()));
-        } catch (Exception ex) {
+            DOMSource domSource = new DOMSource(this.context.getSvgDocument());
+            StringWriter writer = new StringWriter();
+            StreamResult result = new StreamResult(writer);
+            TransformerFactory tf = TransformerFactory.newInstance();
+            Transformer transformer = tf.newTransformer();
+            transformer.transform(domSource, result);
+            return writer.toString();
+        } catch (TransformerException ex) {
             throw new RuntimeException(ex);
         }
     }
-    
+
     public InputStream toPNG() {
         try {
-            
+
             PNGTranscoder transcoder = new PNGTranscoder();
-            TranscoderInput input = new TranscoderInput(this.context.getSvgDocument());
+            TranscoderInput input = new TranscoderInput(new ByteArrayInputStream(this.toXML().getBytes()));
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             TranscoderOutput output = new TranscoderOutput(baos);
             transcoder.transcode(input, output);
             baos.close();
-            
+
             return new ByteArrayInputStream(baos.toByteArray());
         } catch (Exception ex) {
             throw new RuntimeException(ex);

@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.ilesteban.processcoloring;
+package com.ilesteban.processimage;
 
 import java.util.HashMap;
 import java.util.Map;

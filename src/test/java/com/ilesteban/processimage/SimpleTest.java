@@ -2,9 +2,11 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.ilesteban.processcoloring;
+package com.ilesteban.processimage;
 
-import com.ilesteban.processcoloring.transformation.TaskColorTransformationJob;
+import com.ilesteban.processimage.ProcessImageProcessorConfiguration;
+import com.ilesteban.processimage.ProcessImageProcessor;
+import com.ilesteban.processimage.transformation.TaskColorTransformationJob;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;

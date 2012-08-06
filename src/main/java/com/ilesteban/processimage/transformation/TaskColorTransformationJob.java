@@ -2,10 +2,10 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.ilesteban.processcoloring.transformation;
+package com.ilesteban.processimage.transformation;
 
-import com.ilesteban.processcoloring.ProcessContext;
-import com.ilesteban.processcoloring.TaskDefinition;
+import com.ilesteban.processimage.ProcessContext;
+import com.ilesteban.processimage.TaskDefinition;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
