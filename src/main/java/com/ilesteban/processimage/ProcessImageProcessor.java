@@ -1,14 +1,28 @@
 /*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ * Copyright 2012 esteban.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package com.ilesteban.processimage;
 
 import com.ilesteban.processimage.transformation.TransformationJob;
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Reader;
+import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -32,7 +46,10 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 /**
- *
+ * Class that processes an SVG definition of a jBPM5 process.
+ * Using this class you can apply different transformations to the image.
+ * This class is only meant to be used for SVG representations coming from
+ * jBPM's Web Designer: https://github.com/droolsjbpm/jbpm-designer
  * @author esteban
  */
 public class ProcessImageProcessor {
@@ -44,10 +61,24 @@ public class ProcessImageProcessor {
     private List<TransformationJob> transformationJobs = new ArrayList<TransformationJob>();
     private ProcessImageProcessorConfiguration configuration = new ProcessImageProcessorConfiguration();
 
+    /**
+     * Creates a new instance of <code>ProcessImageProcessor</code> from an
+     * InputStream.
+     * @param processDefinition an InputStream pointing to the SVG process image. 
+     * @throws IOException 
+     */
     public ProcessImageProcessor(InputStream processDefinition) throws IOException {
         this(processDefinition, null);
     }
 
+    /**
+     * Creates a new instance of <code>ProcessImageProcessor</code> from an
+     * InputStream using a configuration object to control certain aspects of
+     * the processing mechanism.
+     * @param processDefinition an InputStream pointing to the SVG process image. 
+     * @param configuration the configuration to apply.
+     * @throws IOException 
+     */
     public ProcessImageProcessor(InputStream processDefinition, ProcessImageProcessorConfiguration configuration) throws IOException {
         if (configuration != null) {
             this.configuration = configuration;
@@ -124,10 +155,24 @@ public class ProcessImageProcessor {
         this.context.setTaskDefinitions(taskDefinitions);
     }
 
+    /**
+     * Creates a new instance of <code>ProcessImageProcessor</code> from an
+     * String.
+     * @param processDefinition an String containing the SVG process image. 
+     * @throws IOException 
+     */
     public ProcessImageProcessor(String processDefinition) throws IOException {
         this(new ByteArrayInputStream(processDefinition.getBytes()));
     }
 
+    /**
+     * Creates a new instance of <code>ProcessImageProcessor</code> from an
+     * String using a configuration object to control certain aspects of
+     * the processing mechanism.
+     * @param processDefinition an String containing the SVG process image. 
+     * @param configuration the configuration to apply.
+     * @throws IOException 
+     */
     public ProcessImageProcessor(String processDefinition, ProcessImageProcessorConfiguration configuration) throws IOException {
         this(new ByteArrayInputStream(processDefinition.getBytes()), configuration);
     }
@@ -136,22 +181,50 @@ public class ProcessImageProcessor {
         return this.context.getTaskDefinitions();
     }
 
+    /**
+     * Adds a new transformation job to be applied. Transformation jobs are applied
+     * in the same order they are added to this class.
+     * @param e
+     * @return 
+     */
     public boolean addTransformationJob(TransformationJob e) {
         return transformationJobs.add(e);
     }
 
+    /**
+     * Adds a set of transformation jobs to be applied. Transformation jobs are applied
+     * in the same order they are added to this object.
+     * @param e
+     * @return 
+     */
     public boolean addAllTransformationJobs(Collection<? extends TransformationJob> c) {
         return transformationJobs.addAll(c);
     }
 
+    /**
+     * Clears any transformation job previously added to this object.
+     */
     public void clearTransformationJobs() {
         this.transformationJobs = new ArrayList<TransformationJob>();
     }
 
+    /**
+     * Applies all the transformations added to this object.
+     * Transformation jobs are applied in the same order they are added to this 
+     * object.
+     * This method is the same as {@link #applyTransformationJobs(boolean) applyTransformationJobs(true)} 
+     */
     public void applyTransformationJobs() {
         this.applyTransformationJobs(true);
     }
 
+    /**
+     * Applies all the transformations added to this object.
+     * Transformation jobs are applied in the same order they are added to this 
+     * object.
+     * @param clearTransformationJobs clear all the transformation jobs after
+     * they are applied.
+     */
     public void applyTransformationJobs(boolean clearTransformationJobs) {
         for (TransformationJob transformationJob : transformationJobs) {
             transformationJob.transform(context);
@@ -162,7 +235,11 @@ public class ProcessImageProcessor {
         }
     }
 
-    public String toXML() {
+    /**
+     * Returns an XML representation of the SVG being processed.
+     * @return 
+     */
+    public Reader toXML() {
         try {
             DOMSource domSource = new DOMSource(this.context.getSvgDocument());
             StringWriter writer = new StringWriter();
@@ -170,17 +247,21 @@ public class ProcessImageProcessor {
             TransformerFactory tf = TransformerFactory.newInstance();
             Transformer transformer = tf.newTransformer();
             transformer.transform(domSource, result);
-            return writer.toString();
+            return new BufferedReader(new StringReader(writer.toString()));
         } catch (TransformerException ex) {
             throw new RuntimeException(ex);
         }
     }
 
+    /**
+     * Returns a PNG representation of the SVG being processed.
+     * @return 
+     */
     public InputStream toPNG() {
         try {
 
             PNGTranscoder transcoder = new PNGTranscoder();
-            TranscoderInput input = new TranscoderInput(new ByteArrayInputStream(this.toXML().getBytes()));
+            TranscoderInput input = new TranscoderInput(this.toXML());
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             TranscoderOutput output = new TranscoderOutput(baos);
             transcoder.transcode(input, output);
